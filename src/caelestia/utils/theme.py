@@ -69,10 +69,10 @@ def c2s(c: str, *i: list[int]) -> str:
     return f"\x1b]{';'.join(map(str, i))};rgb:{c[0:2]}/{c[2:4]}/{c[4:6]}\x1b\\"
 
 
-def gen_sequences(colours: dict[str, str]) -> str:
+def gen_sequences(colours: dict[str, str], skip_background: bool = False) -> str:
     """
     10: foreground
-    11: background
+    11: background (skipped if skip_background=True for terminal transparency)
     12: cursor
     17: selection
     4:
@@ -80,11 +80,13 @@ def gen_sequences(colours: dict[str, str]) -> str:
         8 - 15: bright colours
         16+: 256 colours
     """
+    seq = c2s(colours["onSurface"], 10)
+    if not skip_background:
+        seq += c2s(colours["surface"], 11)
+    seq += c2s(colours["secondary"], 12)
+    seq += c2s(colours["secondary"], 17)
     return (
-        c2s(colours["onSurface"], 10)
-        + c2s(colours["surface"], 11)
-        + c2s(colours["secondary"], 12)
-        + c2s(colours["secondary"], 17)
+        seq
         + c2s(colours["term0"], 4, 0)
         + c2s(colours["term1"], 4, 1)
         + c2s(colours["term2"], 4, 2)
@@ -254,8 +256,11 @@ def apply_colours(colours: dict[str, str], mode: str) -> None:
     def check(key: str) -> bool:
         return cfg[key] if key in cfg else True
 
+    def get_bool(key: str, default: bool = False) -> bool:
+        return cfg.get(key, default)
+
     if check("enableTerm"):
-        apply_terms(gen_sequences(colours))
+        apply_terms(gen_sequences(colours, skip_background=get_bool("termTransparency")))
     if check("enableHypr"):
         apply_hypr(gen_conf(colours))
     if check("enableDiscord"):
